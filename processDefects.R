@@ -34,17 +34,21 @@ processDefects <- function(x_file = character()) {
      
 	severity <- levels(defects$Severity) 
 		
-	xtab_S_St <<- getXParamCrossTab(defects, status_codes, c("DefectStatus","Severity"), confidence=1.01, col_confidence=1.01)
+	xtab_S_St <- getXParamCrossTab(defects, status_codes, c("DefectStatus","Severity"), confidence=1.01, col_confidence=1.01)
 
-	xtab_FA_TA <<- getXParamCrossTab(defects, status_codes, c("FunctionalArea","TechnicalArea"), confidence=0.9, col_confidence=0.99)
+	xtab_FA_TA <- getXParamCrossTab(defects, status_codes, c("FunctionalArea","TechnicalArea"), confidence=0.9, col_confidence=0.99)
 
-	xtab_FA_P <<- getXParamCrossTab(defects, status_codes, c("FunctionalArea","Product"), confidence=0.8, col_confidence=0.9)
+	xtab_FA_P <- getXParamCrossTab(defects, status_codes, c("FunctionalArea","Product"), confidence=0.8, col_confidence=0.9)
 
-	xtab_TA_P <<- getXParamCrossTab(defects, status_codes, c("TechnicalArea","Product"), confidence=0.91, col_confidence=0.91)
+	xtab_TA_P <- getXParamCrossTab(defects, status_codes, c("TechnicalArea","Product"), confidence=0.91, col_confidence=0.91)
 
-	xtab_RCA_Env <<- getXParamCrossTab(defects, resolved_status_codes,c("RCACode","DetectedEnv"), confidence=0.96, col_confidence=0.995)
+	xtab_RCA_Env <- getXParamCrossTab(defects, resolved_status_codes,c("RCACode","DetectedEnv"), confidence=0.96, col_confidence=0.995)
 
-	xtab_RCA_DS <<- getXParamCrossTab(defects, resolved_status_codes,c("DefectSource","RCACode"), confidence=0.99, col_confidence=0.95)
+	xtab_RCA_DS <- getXParamCrossTab(defects, resolved_status_codes,c("DefectSource","RCACode"), confidence=0.99, col_confidence=0.95)
+	
+	ls_cumDefects <- cumulativeDefects(defects)
+	defOpen <- ls_cumDefects[["cumOpen"]]
+	defClose <- ls_cumDefects[["cumClose"]]
 
 	fileName <- "CCUW_Defects_Analysis_1Jul15.pdf"
 	if(file.exists(fileName)){
@@ -146,9 +150,19 @@ processDefects <- function(x_file = character()) {
 	barplot(xtab_RCA_DS, ylim=c(0,sum(xtab_RCA_DS[,1])), main="Defects by RCA Code and Defect Source", xlab="RCA Code",ylab="Defect Count", axes=TRUE,cex.axis=par("cex"), cex.names=par("cex.axis"), beside=FALSE,col=cols,legend=TRUE, add=TRUE)
 	
 	box()
+	
+## Plot the graph with cumulative defects
 
+	#par("labels"=FALSE)
+	plot(defOpen$startDate, defOpen$cumSum, type="l", col="red", lty=1,lwd=2, main="Cumulative Defects", xlab="Month", ylab="Defect Count",axes=FALSE)	
+	axis(side=1, at=defOpen$startDate, labels=format(defOpen$startDate,"%b-%y"))
+	axis(side=2, at=NULL, labels=TRUE, las=2, ylim=c(0,1.1*max(defOpen$cumSum)))
+	lines(defClose$closeDate, defClose$cumSum, type="l", col="blue", lty=2,lwd=2, axes=FALSE)	
+	
+	grid(max(defOpen$cumSum)/100,lty=1,lwd=0.5)
+	box()	
+	
 	dev.off()
-
 }
 
 
@@ -311,4 +325,38 @@ processXTab <- function(df_xtab, confidence=1.01, col_confidence=1.01){
 	df_xtab <- as.matrix(df_xtab[,1:index])
 	
 	return(df_xtab)
+}
+
+
+## This function takes the defects and returns the cumulative defects open and close numbers data
+
+cumulativeDefects <- function(defects){
+	# Order the defects by detected date (or detected date)
+	defects <- defects[order(defects[,"DetectedDate"],decreasing=FALSE),]
+
+	defects$startDate <- as.Date(defects$DetectedDate,"%m/%d/%Y")
+	defects$closeDate <- as.Date(defects$ClosingDate, "%m/%d/%Y")
+
+	temp <- tapply(defects$DefectID, cut(defects$startDate, "month"), length)
+	
+	openDefects <- data.frame(startDate=as.Date(names(temp),"%Y-%m-%d"),openCnt=as.numeric(temp))
+	openDefects <- openDefects[order(openDefects[,"startDate"],decreasing=FALSE),]
+	openDefects$cumSum <- cumsum(openDefects$openCnt)
+	
+	t_closeDefects <- data.frame(ID=defects$DefectID, closeDate=defects$closeDate)
+	t_closeDefects <- subset(t_closeDefects, !is.na(t_closeDefects$closeDate))
+	t_closeDefects <- subset(t_closeDefects, t_closeDefects$closeDate >= min(openDefects$startDate))
+	
+	
+	t_temp <- tapply(t_closeDefects$ID, cut(t_closeDefects$closeDate, "month"), length)
+	
+	closeDefects <- data.frame(closeDate=as.Date(names(t_temp),"%Y-%m-%d"), closeCnt=as.numeric(t_temp))
+	closeDefects <- closeDefects[order(closeDefects[,"closeDate"],decreasing=FALSE),]
+	closeDefects$cumSum <- cumsum(closeDefects$closeCnt)
+	
+	rm(temp)
+	rm(t_temp)
+		
+	ls_cumDefects <- list(cumOpen=openDefects, cumClose=closeDefects)
+	return(ls_cumDefects)
 }
