@@ -34,19 +34,21 @@ processDefects <- function(x_file = character()) {
      
 	severity <- levels(defects$Severity) 
 		
-	xtab_S_St <- getXParamCrossTab(defects, status_codes, c("DefectStatus","Severity"), confidence=1.01, col_confidence=1.01)
+	xtab_S_St <<- getXParamCrossTab(defects, status_codes, c("DefectStatus","Severity"), confidence=1.01, col_confidence=1.01)
 
-	xtab_FA_TA <- getXParamCrossTab(defects, status_codes, c("FunctionalArea","TechnicalArea"), confidence=0.9, col_confidence=0.99)
+	xtab_FA_TA <<- getXParamCrossTab(defects, status_codes, c("FunctionalArea","TechnicalArea"), confidence=0.9, col_confidence=0.99)
 
-	xtab_FA_P <- getXParamCrossTab(defects, status_codes, c("FunctionalArea","Product"), confidence=0.8, col_confidence=0.9)
+	xtab_FA_P <<- getXParamCrossTab(defects, status_codes, c("FunctionalArea","Product"), confidence=0.8, col_confidence=0.9)
 
-	xtab_TA_P <- getXParamCrossTab(defects, status_codes, c("TechnicalArea","Product"), confidence=0.91, col_confidence=0.91)
+	xtab_TA_P <<- getXParamCrossTab(defects, status_codes, c("TechnicalArea","Product"), confidence=0.91, col_confidence=0.91)
 
-	xtab_RCA_Env <- getXParamCrossTab(defects, resolved_status_codes,c("RCACode","DetectedEnv"), confidence=0.96, col_confidence=0.995)
+	xtab_RCA_Env <<- getXParamCrossTab(defects, resolved_status_codes,c("RCACode","DetectedEnv"), confidence=0.96, col_confidence=0.995)
 
-	xtab_RCA_DS <- getXParamCrossTab(defects, resolved_status_codes,c("DefectSource","RCACode"), confidence=0.99, col_confidence=0.95)
+	xtab_RCA_DS <<- getXParamCrossTab(defects, resolved_status_codes,c("DefectSource","RCACode"), confidence=0.99, col_confidence=0.95)
 	
-	ls_cumDefects <- cumulativeDefects(defects)
+	xtab_RCA_P <<- getXParamCrossTab(defects, resolved_status_codes, c("RCACode","Product"), confidence=0.90, col_confidence=0.95)
+	
+	ls_cumDefects <<- cumulativeDefects(defects)
 	defOpen <- ls_cumDefects[["cumOpen"]]
 	defClose <- ls_cumDefects[["cumClose"]]
 
@@ -153,7 +155,6 @@ processDefects <- function(x_file = character()) {
 	
 ## Plot the graph with cumulative defects
 
-	#par("labels"=FALSE)
 	plot(defOpen$startDate, defOpen$cumSum, type="l", col="red", lty=1,lwd=2, main="Cumulative Defects", xlab="Month", ylab="Defect Count",axes=FALSE)	
 	axis(side=1, at=defOpen$startDate, labels=format(defOpen$startDate,"%b-%y"))
 	axis(side=2, at=NULL, labels=TRUE, las=2, ylim=c(0,1.1*max(defOpen$cumSum)))
@@ -161,7 +162,22 @@ processDefects <- function(x_file = character()) {
 	
 	grid(max(defOpen$cumSum)/100,lty=1,lwd=0.5)
 	box()	
+
+## Plot the graph with RCA Code and Product
+
+	n_colors <- nrow(xtab_RCA_P)
+	n_columns <- ncol(xtab_RCA_P)
+
+	cols <- terrain.colors(n_colors)
+
+	barplot(xtab_RCA_P, ylim=c(0,sum(xtab_RCA_P[,1])), main="Understanding RCA Codes by Product", xlab="Product", ylab="Defect Count", axes=TRUE,cex.axis=par("cex"), cex.names=par("cex.axis"), beside=FALSE,col=cols,legend=TRUE,las=3, srt=45)
 	
+	grid( round(max(xtab_RCA_P[,1])/25,0),lty=1,lwd=0.5)
+
+	barplot(xtab_RCA_P, ylim=c(0,sum(xtab_RCA_P[,1])), main="Understanding RCA Codes by Product", xlab="Product", ylab="Defect Count", axes=TRUE,cex.axis=par("cex"), cex.names=par("cex.axis"), beside=FALSE,col=cols,legend=TRUE, add=TRUE, las=3, srt=45)
+	
+	box()
+		
 	dev.off()
 }
 
