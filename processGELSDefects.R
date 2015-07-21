@@ -27,7 +27,7 @@ processGELSDefects <- function(x_file = character()) {
 	defects <- convertToFactors(defects)
 	
 	## Get the defects counts by Severity and ones in Open Status
-	status_codes <- c("New", "Open", "Deferred","Ready for QA", "Reopen","Re-Test")
+	status_codes <- c("New", "Open", "Deferred", "Reopen","Re-Test")
 
 	all_status_codes <- levels(defects$DefectStatus)
 	
@@ -37,10 +37,16 @@ processGELSDefects <- function(x_file = character()) {
 		
 	#Split the data set by open defects and resolved defects
 	open_defects <- getSubset(defects,"DefectStatus",status_codes)
+	
+	open_defects <- getSubset(open_defects,"DefectType",c("Bug","Change Request", "Enhancement"))
+
 	resolved_defects <- getSubset(defects, "DefectStatus", resolved_status_codes)
 	
+	resolved_defects <- getSubset(resolved_defects, "DefectType",c("Bug","Change Request", "Enhancement"))
+
+
 	#Plot open defects by status and severity
-	g <- ggplot(data=open_defects, aes(x=DefectStatus, fill=Severity)) + geom_bar(stat="bin", position="stack") + facet_grid(.~Module)
+	g <- ggplot(data=open_defects, aes(x=DefectStatus, fill=Severity)) + geom_bar(stat="bin", position="stack") + facet_grid(DefectType~Module)
 	g <- g + geom_text(aes(label=..count..), stat="bin", position="stack",size=2)
 	g <- g + labs(x="Defect Status", y="Defect Count", title="Open Defects by Module")
 	g <- g + theme_bw() + theme(axis.text.x = element_text(size=8, angle=45), legend.text = element_text(size=7), legend.title=element_text(size=9))
@@ -48,7 +54,7 @@ processGELSDefects <- function(x_file = character()) {
 	g_openDefects_status_sev <- g
 		
 	#Plot Defect Status by Module for Resolved Defects
-	g <- ggplot(data=resolved_defects, aes(x=DefectStatus, fill=Severity)) + geom_bar(stat="bin",position="stack") + facet_grid(.~Module)
+	g <- ggplot(data=resolved_defects, aes(x=DefectStatus, fill=Severity)) + geom_bar(stat="bin",position="stack") + facet_grid(DefectType~Module)
 	g <- g + geom_text(aes(label=..count..), stat="bin", position="stack",size=2)
 	g <- g + labs(x="Defect Status", y="Defect Count", title="Resolved Defects by Module")
 	g <- g + theme_bw() + theme(axis.text.x = element_text(size=8, angle=45), legend.text = element_text(size=7), legend.title=element_text(size=9))
@@ -56,7 +62,7 @@ processGELSDefects <- function(x_file = character()) {
 	g_resolvedDefects_status_Module <- g
 	
 	# Plot Resolved Defects by Resolution Type and Module
-	g <- ggplot(data=resolved_defects, aes(x=Severity, fill=ResolutionType))	+ geom_bar() + facet_grid(.~Module)
+	g <- ggplot(data=resolved_defects, aes(x=Severity, fill=ResolutionType))	+ geom_bar() + facet_grid(DefectType~Module)
 	g <- g + geom_text(aes(label=..count..), stat="bin", position="stack", size=2)
 	g <- g + labs(x="Severity", y="Defect Count", title="Resolved Defects by Resolution Type")
 	g <- g + theme_bw() + theme(axis.text.x = element_text(size=8, angle=45), legend.text = element_text(size=7), legend.title=element_text(size=9))
@@ -64,7 +70,7 @@ processGELSDefects <- function(x_file = character()) {
 	g_resolutionType_Module <- g
 	
 	# Plot Defect Source by Module (for all defects)
-	g <- ggplot(data=resolved_defects, aes(x=Severity, fill=DefectSource)) + geom_bar() + facet_grid(.~Module)
+	g <- ggplot(data=resolved_defects, aes(x=Severity, fill=DefectSource)) + geom_bar() + facet_grid(DefectType~Module)
 	g <- g + geom_text(aes(label=..count..), stat="bin", position="stack", size=2)
 	g <- g + labs(x="Severity",y="Defect Count", title="Defect Source by Module (Resolved defects)")
 	g <- g + theme_bw() + theme(axis.text.x = element_text(size=8, angle=45), legend.text = element_text(size=7), legend.title=element_text(size=9))
