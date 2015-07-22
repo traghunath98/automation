@@ -48,7 +48,7 @@ processGELSDefects <- function(x_file = character()) {
 	#Plot open defects by status and severity
 	g <- ggplot(data=open_defects, aes(x=DefectStatus, fill=Severity)) + geom_bar(stat="bin", position="stack") + facet_grid(DefectType~Module)
 	g <- g + geom_text(aes(label=..count..), stat="bin", position="stack",size=2)
-	g <- g + labs(x="Defect Status", y="Defect Count", title="Open Defects by Module")
+	g <- g + labs(x="Status", y="Count", title="Open Defects / CR's by Module")
 	g <- g + theme_bw() + theme(axis.text.x = element_text(size=8, angle=45), legend.text = element_text(size=7), legend.title=element_text(size=9))
 	
 	g_openDefects_status_sev <- g
@@ -56,7 +56,7 @@ processGELSDefects <- function(x_file = character()) {
 	#Plot Defect Status by Module for Resolved Defects
 	g <- ggplot(data=resolved_defects, aes(x=DefectStatus, fill=Severity)) + geom_bar(stat="bin",position="stack") + facet_grid(DefectType~Module)
 	g <- g + geom_text(aes(label=..count..), stat="bin", position="stack",size=2)
-	g <- g + labs(x="Defect Status", y="Defect Count", title="Resolved Defects by Module")
+	g <- g + labs(x="Status", y="Count", title="Resolved Defects / CR's by Module")
 	g <- g + theme_bw() + theme(axis.text.x = element_text(size=8, angle=45), legend.text = element_text(size=7), legend.title=element_text(size=9))
 	
 	g_resolvedDefects_status_Module <- g
@@ -64,7 +64,7 @@ processGELSDefects <- function(x_file = character()) {
 	# Plot Resolved Defects by Resolution Type and Module
 	g <- ggplot(data=resolved_defects, aes(x=Severity, fill=ResolutionType))	+ geom_bar() + facet_grid(DefectType~Module)
 	g <- g + geom_text(aes(label=..count..), stat="bin", position="stack", size=2)
-	g <- g + labs(x="Severity", y="Defect Count", title="Resolved Defects by Resolution Type")
+	g <- g + labs(x="Severity", y="Count", title="Resolution Type (Resolved Defects / CR's)")
 	g <- g + theme_bw() + theme(axis.text.x = element_text(size=8, angle=45), legend.text = element_text(size=7), legend.title=element_text(size=9))
 	
 	g_resolutionType_Module <- g
@@ -72,7 +72,7 @@ processGELSDefects <- function(x_file = character()) {
 	# Plot Defect Source by Module (for all defects)
 	g <- ggplot(data=resolved_defects, aes(x=Severity, fill=DefectSource)) + geom_bar() + facet_grid(DefectType~Module)
 	g <- g + geom_text(aes(label=..count..), stat="bin", position="stack", size=2)
-	g <- g + labs(x="Severity",y="Defect Count", title="Defect Source by Module (Resolved defects)")
+	g <- g + labs(x="Severity",y="Count", title="Defect Source (Resolved Defects / CR's)")
 	g <- g + theme_bw() + theme(axis.text.x = element_text(size=8, angle=45), legend.text = element_text(size=7), legend.title=element_text(size=9))
 	
 	g_defectSource_Module <- g
@@ -103,21 +103,21 @@ defineColNames <- function(defects) {
 	
 	## Set all the column names individually
 	colnames(defects)[5] <- "DefectID"
-	colnames(defects)[20] <- "TargetFixDate"
-	colnames(defects)[16] <- "DefectStatus"
-	colnames(defects)[17] <- "Severity"
+	colnames(defects)[17] <- "TargetFixDate"
+	colnames(defects)[15] <- "DefectStatus"
+	colnames(defects)[16] <- "Severity"
 	colnames(defects)[6] <- "Priority"
 	colnames(defects)[4] <- "AssignedTo"
 	colnames(defects)[8] <- "BusinessDescription"
 	colnames(defects)[7] <- "Title"
 	colnames(defects)[1] <- "Product"
 	colnames(defects)[3] <- "DetectedEnv"
-	colnames(defects)[11] <- "DetectedBy"
+	colnames(defects)[18] <- "DetectedBy"
 	colnames(defects)[10] <- "DefectType"
-	colnames(defects)[15] <- "DefectSource"
-	colnames(defects)[14] <- "ResolutionType"
-	colnames(defects)[13] <- "ResolutionSummary"
-	colnames(defects)[18] <- "TestPhase"
+	colnames(defects)[14] <- "DefectSource"
+	colnames(defects)[13] <- "ResolutionType"
+	colnames(defects)[12] <- "ResolutionSummary"
+	colnames(defects)[19] <- "TestPhase"
 	
 	return(defects)
 }
@@ -129,6 +129,11 @@ convertToFactors <- function(defects){
 	if(!(class(defects)=="data.frame")){
 		stop("Invalid input - this function expects defects as a dataframe")
 	}
+
+	defects$DefectType <- replace(defects$DefectType, (grep("Design",defects$DefectType)),"Bug")
+	defects$DefectType <- replace(defects$DefectType, (grep("Configuration",defects$DefectType)),"Change Request")
+	defects$DefectType <- replace(defects$DefectType, (grep("Environment",defects$DefectType)),"Bug")
+	defects$DefectType <- replace(defects$DefectType, (grep("Performance",defects$DefectType)),"Bug")
 
 	defects$DefectStatus <- as.factor(defects$DefectStatus)
 	defects$Severity <- as.factor(defects$Severity)
