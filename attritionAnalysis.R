@@ -77,8 +77,8 @@ analyzeAttrition <- function(x_file = character()) {
 
 # Plot relationship between prev-experience and tenure (in months) for all competencies
     
-    g <- ggplot(data=aig_data, aes(x=Prev_Exp, y=Tenure/30, color=Sex)) + geom_point() + geom_smooth(method="lm") + facet_wrap(~Competency, ncol=4)
-    g <- g + labs(x="Previous Experience (months)", y="Tenure (months", title="Tenure and Previous Experience")
+    g <- ggplot(data=getSubset(aig_data,"Competency",c("C2","C3","C4","C5")), aes(x=Prev_Exp, y=Tenure/30, color=Sex)) + geom_point() + geom_smooth(method="lm") + scale_y_continuous(limits=c(0,150)) + facet_wrap(~Competency, ncol=2)
+    g <- g + labs(x="Previous Experience (months)", y="Tenure (months)", title="Tenure and Previous Experience")
     g <- g + theme_bw() + theme(axis.text.x=element_text(size=8),legend.text=element_text(size=7),legend.title=element_text(size=8), legend.position="bottom")
 
     g_exp_tenure <- g
