@@ -51,7 +51,7 @@ analyzeAttrition <- function(x_file = character()) {
 	g <- ggplot(data=aig_reasonData, aes(x=Reason, fill=Tenure_Yrs)) + geom_bar(stat="bin", position="stack") + facet_grid(.~Shore)
 	g <- g + geom_text(aes(label=..count..), stat="bin", position="stack",size=2)
 	g <- g + labs(x="Reason", y="Count", title="Attrition by Tenure and Reason(top 70%)")
-	g <- g + theme_bw() + theme(axis.text.x = element_text(size=8, angle=45), legend.text = element_text(size=7), legend.title=element_text(size=9))
+	g <- g + theme_bw() + theme(axis.text.x = element_text(size=6, angle=45), legend.text = element_text(size=7), legend.title=element_text(size=8), legend.position="bottom")
 	
 	g_reason_tenure <- g
 
@@ -59,20 +59,29 @@ analyzeAttrition <- function(x_file = character()) {
 
 	g <- ggplot(data=aig_reasonData, aes(x=Reason, y=Total_Exp)) + geom_boxplot() + facet_grid(.~Shore)
 	g <- g + labs(x="Reason", y="Total Experience", title="Reason and Experience")
-	g <- g + theme_bw() + theme(axis.text.x = element_text(size=8, angle=45), legend.text = element_text(size=7), legend.title=element_text(size=9))
+	g <- g + theme_bw() + theme(axis.text.x = element_text(size=6, angle=45))
 	
 	g_competency_exp <- g
 
 
 
-#Plot Exit Date, Reason, by Shore
+#Plot Exit Date, Reason, by Competency
 
-    g <- ggplot(data=aig_reasonData, aes(x=exitDate, y=..count.., fill=Reason)) + geom_bar(stat="bin") + facet_wrap(Tenure_Yrs~Shore, ncol=3)
-    g <- g + labs(x="Exit Date", y="Count", title="Reason by exit date, shore")
-    g <- g + theme_bw() + theme(axis.text.x = element_text(size=8), legend.text = element_text(size=7), legend.title=element_text(size=9))
+    aig_selectCompetency <- getSubset(aig_reasonData,"Competency",c("C2","C3","C4","C5"))
+    g <- ggplot(data=aig_selectCompetency, aes(x=exitDate, y=..count.., fill=Reason)) + geom_bar(stat="bin") + facet_wrap(~Competency, ncol=2)
+    g <- g + labs(x="Exit Date", y="Count", title="Reason by exit date,Competency")
+    g <- g + theme_bw() + theme(axis.text.x = element_text(size=6, angle=45), legend.text = element_text(size=6), legend.title=element_text(size=7))
 
     g_exitDate_Reason <- g
+    
 
+# Plot relationship between prev-experience and tenure (in months) for all competencies
+    
+    g <- ggplot(data=aig_data, aes(x=Prev_Exp, y=Tenure/30, color=Sex)) + geom_point() + geom_smooth(method="lm") + facet_wrap(~Competency, ncol=4)
+    g <- g + labs(x="Previous Experience (months)", y="Tenure (months", title="Tenure and Previous Experience")
+    g <- g + theme_bw() + theme(axis.text.x=element_text(size=8),legend.text=element_text(size=7),legend.title=element_text(size=8), legend.position="bottom")
+
+    g_exp_tenure <- g
 
 
 	fileName <- paste("AIG_Attrition",strftime(Sys.time(),"%d%b%y-%H%M"),".pdf", sep="")
@@ -87,6 +96,7 @@ analyzeAttrition <- function(x_file = character()) {
 		print(g_reason_tenure)
 		print(g_competency_exp)
         print(g_exitDate_Reason)
+        print(g_exp_tenure)
 				
 	dev.off()
 }
