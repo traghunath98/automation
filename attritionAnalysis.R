@@ -75,13 +75,27 @@ analyzeAttrition <- function(x_file = character()) {
     g_exitDate_Reason <- g
     
 
-# Plot relationship between prev-experience and tenure (in months) for all competencies
+# Plot relationship between prev-experience and tenure (in months) for C2-C5 competencies
     
     g <- ggplot(data=getSubset(aig_data,"Competency",c("C2","C3","C4","C5")), aes(x=Prev_Exp, y=Tenure/30, color=Sex)) + geom_point() + geom_smooth(method="lm") + scale_y_continuous(limits=c(0,150)) + facet_wrap(~Competency, ncol=2)
     g <- g + labs(x="Previous Experience (months)", y="Tenure (months)", title="Tenure and Previous Experience")
     g <- g + theme_bw() + theme(axis.text.x=element_text(size=8),legend.text=element_text(size=7),legend.title=element_text(size=8), legend.position="bottom")
 
     g_exp_tenure <- g
+
+# Plot relationship between total-experience and tenure (in months) for C2-C7 competencies
+    
+    g <- ggplot(data=getSubset(aig_data,"Competency",c("C2","C3","C4","C5","C6","C7")), aes(x=Total_Exp, y=Tenure/30, color=Sex)) + geom_point() + geom_smooth(method="lm") + scale_y_continuous(limits=c(0,180)) + facet_wrap(~Competency, ncol=2)
+    g <- g + labs(x="Total Experience (months)", y="Tenure (months)", title="Tenure and Total Experience")
+    g <- g + theme_bw() + theme(axis.text.x=element_text(size=8),legend.text=element_text(size=7),legend.title=element_text(size=8), legend.position="bottom")
+
+    g_total_exp_tenure <- g
+
+
+
+
+
+x_attr <<-aig_data
 
 
 	fileName <- paste("AIG_Attrition",strftime(Sys.time(),"%d%b%y-%H%M"),".pdf", sep="")
@@ -90,13 +104,15 @@ analyzeAttrition <- function(x_file = character()) {
 	}
 
 	pdf(fileName)
-
+       	
+		print(g_exp_tenure)
+		print(g_total_exp_tenure)
 		print(g_competency_tenure)
 		print(g_location_tenure)
 		print(g_reason_tenure)
 		print(g_competency_exp)
-        print(g_exitDate_Reason)
-        print(g_exp_tenure)
+        	print(g_exitDate_Reason)
+ 
 				
 	dev.off()
 }
