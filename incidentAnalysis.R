@@ -33,6 +33,13 @@ analyzeIncidents <- function(x_file = character()) {
     g_incident_trend <- g
     
     
+    #Plot the cumulative graphs for incidents open and close
+    g <- ggplot(data=fl_incidents, aes(x=as.Date(open_date, "%d-%m-%Y"))) + stat_bin(aes(y=cumsum(..count..)), geom="line", binwidth=7,col="red") + stat_bin(aes(x=as.Date(close_date,"%d-%m-%Y"), y=cumsum(..count..)), geom="line",binwidth=7, lty=2, col="blue") + scale_x_date(labels=date_format("%d-%b"), breaks=date_breaks("week")) + scale_y_continuous(limits=c(0,1.1*nrow(fl_incidents)))
+    g <- g + labs(x="Date", y="Cumulative Incidents", title="CCUW Incidents - Open and Close Counts (Cumulative Basis)")
+    g <- g + theme_bw() + theme(axis.text.x = element_text(size=8, angle=45))
+
+    g_cum_incident_trend <- g
+    
     x_incidents <<- fl_incidents
 
 
@@ -44,7 +51,8 @@ analyzeIncidents <- function(x_file = character()) {
 	pdf(fileName)
        	
 		print(g_incident_trend)
-        
+        print(g_cum_incident_trend)
+    
 	dev.off()
     
 }
