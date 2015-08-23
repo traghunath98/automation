@@ -16,6 +16,7 @@ analyzeIncidents <- function(x_file = character()) {
 	library(grDevices)
     library(scales)
     library(reshape2)
+    library(stringr)
 	
     if(!file.exists(x_file)){
 		stop("invalid file")
@@ -24,6 +25,7 @@ analyzeIncidents <- function(x_file = character()) {
 	fl_incidents <- read.csv(x_file, stringsAsFactors=FALSE)
 
     fl_incidents <- convertToFactors(fl_incidents)
+    fl_incidents <- splitDescriptionData(fl_incidents)
 	
 	#Plot incident Open and Close trend by date
     g <- ggplot(data=fl_incidents, aes(x=as.Date(open_date, "%d-%m-%Y"))) + geom_line(stat="bin", binwidth=7, col="red") + geom_line(data=fl_incidents, mapping=aes(x=as.Date(close_date, "%d-%m-%Y")), stat="bin", binwidth=7, lty=2, col="blue") + scale_x_date(labels=date_format("%d-%b"), breaks=date_breaks("week"))
@@ -37,7 +39,6 @@ analyzeIncidents <- function(x_file = character()) {
     g <- ggplot(data=fl_incidents, aes(x=as.Date(open_date, "%d-%m-%Y"))) + stat_bin(aes(y=cumsum(..count..)), geom="line", binwidth=7,col="red") + stat_bin(aes(x=as.Date(close_date,"%d-%m-%Y"), y=cumsum(..count..)), geom="line",binwidth=7, lty=2, col="blue") + scale_x_date(labels=date_format("%d-%b"), breaks=date_breaks("week")) + scale_y_continuous(limits=c(0,1.1*nrow(fl_incidents)))
     g <- g + labs(x="Date", y="Cumulative Incidents", title="CCUW Incidents - Open and Close Counts (Cumulative Basis)")
     g <- g + theme_bw() + theme(axis.text.x = element_text(size=8, angle=45))
-
     g_cum_incident_trend <- g
     
     x_incidents <<- fl_incidents
@@ -95,3 +96,101 @@ getSubset <- function(fl_incidents=data.frame(), parameter = character(), param_
 
     return(sub_fl_incidents)
 }
+
+## This function analyses the description data and splits it into several columns for greater insights
+## Uses the str_trim function from the stringr library to trim white spaces
+splitDescriptionData <- function(fl_incidents=data.frame()){
+    
+    #Inidialize all variables
+    fl_usr <- character()
+    mf_id <- character()
+    dvn <- character()
+    pol_txn <- character()
+    acct_nm <- character()
+    sub_no <- character()
+    scr_func <- character()
+    act <- character()
+    errMsg <- character()
+    mth_clsng <- character()
+    rush <- character()
+    descr <- character()
+    
+    for(i in 1:nrow(fl_incidents)){
+        
+        desc <- fl_incidents$description[i]
+        
+        if (grepl("^Are",desc)){
+            
+            #Splits the description into list with individual lines with questions
+            ls_desc <- strsplit(desc, split="\n")
+
+            #FL User - Yes or No
+            desc1 <- strsplit(ls_desc[[1]][1], split=":")
+            fl_usr[i] <- str_trim(desc1[[1]][2],side="both")
+            
+            # Mainframe id of the user
+            desc1 <- strsplit(ls_desc[[1]][2], split=":")
+            mf_id[i] <- str_trim(desc1[[1]][2], side="both")
+            
+            # Division of the user
+            desc1 <- strsplit(ls_desc[[1]][3], split=":")
+            dvn[i] <- str_trim(desc1[[1]][2], side="both")
+            
+            # Policy Transaction when incident occurred
+            desc1 <- strsplit(ls_desc[[1]][4], split=":")
+            pol_txn[i] <- str_trim(desc1[[1]][2], side="both")
+            
+            # Account Name for the impacted account
+            desc1 <- strsplit(ls_desc[[1]][5], split=":")
+            acct_nm[i] <- str_trim(desc1[[1]][2], side="both")
+            
+            # Submission Number
+            desc1 <- strsplit(ls_desc[[1]][6], split=":")
+            sub_no[i] <- str_trim(desc1[[1]][2], side="both")
+            
+            # Function on the screen navigation
+            desc1 <- strsplit(ls_desc[[1]][7], split=":")
+            scr_func[i] <- str_trim(desc1[[1]][2], side="both")
+            
+            # Action performed, when the error was encountered
+            desc1 <- strsplit(ls_desc[[1]][8], split=":")
+            act[i] <- str_trim(desc1[[1]][2], side="both")
+            
+            # error message displayed on the screen
+            desc1 <- strsplit(ls_desc[[1]][9], split=":")
+            errMsg[i] <- str_trim(desc1[[1]][2], side="both")
+            
+            #Is it a month closing ticket?
+            desc1 <- strsplit(ls_desc[[1]][10], split=":")
+            mth_clsng[i] <- str_trim(desc1[[1]][2], side="both")
+            
+            # Is it a rush ticket?
+            desc1 <- strsplit(ls_desc[[1]][11], split=":")
+            rush[i] <- str_trim(desc1[[1]][2], side="both")
+            
+            #Put all the remaining lines in descr column
+            descr[i] <- str_trim(ls_desc[[1]][13:length(ls_desc[[1]])], side="both")
+            
+            
+        } else {
+            descr[i] <- desc
+        }
+    }
+    
+    #Add all he columns to the dataframe
+    fl_incidents$fl_usr <- fl_usr
+    fl_incidents$mf_id <- mf_id
+    fl_incidents$dvn <- as.factor(dvn)
+    fl_incidents$pol_txn <- as.factor(pol_txn)
+    fl_incidents$acct_nm <- acct_nm
+    fl_incidents$sub_no <- sub_no
+    fl_incidents$scr_func <- scr_func
+    fl_incidents$act <- act
+    fl_incidents$errMsg <- errMsg
+    fl_incidents$mth_clsng <- mth_clsng
+    fl_incidents$rush <- rush
+    fl_incidents$descr <- descr
+    
+    return(fl_incidents)
+}
+
