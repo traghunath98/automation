@@ -41,6 +41,16 @@ analyzeIncidents <- function(x_file = character()) {
     g <- g + theme_bw() + theme(axis.text.x = element_text(size=8, angle=45))
     g_cum_incident_trend <- g
     
+    
+    #Plot the distribution of transactions by date
+    txn_list <- c("REN","ENDO","NB","ISSUE","RB","BIND","QUOTE","PC","CBOR")
+    fl_txn_incidents <- getSubset(fl_incidents,"pol_txn", txn_list)
+    g <- ggplot(data=fl_txn_incidents, aes(x=as.Date(open_date,"%d-%b-%Y"),fill=pol_txn)) + geom_bar(stat="bin", binwidth=7) + scale_x_date(labels=date_format("%d-%b"), breaks=date_breaks("week"))
+    g <- g + labs(x="Date", y="Count of Incidents", title="CCUW Incidents - By Policy Transaction")
+    g <- g + theme_bw() + theme(axis.text.x = element_text(size=7, angle=45), legend.text=element_text(size=7), legend.title=element_text(size=9))
+    g_txn_incidents <- g
+
+    
     x_incidents <<- fl_incidents
 
 
@@ -53,6 +63,7 @@ analyzeIncidents <- function(x_file = character()) {
        	
 		print(g_incident_trend)
         print(g_cum_incident_trend)
+        print(g_txn_incidents)
     
 	dev.off()
     
@@ -173,10 +184,40 @@ splitDescriptionData <- function(fl_incidents=data.frame()){
             
             
         } else {
+            #Response is not formatted and in free text.
             descr[i] <- desc
         }
     }
     
+    #Make a few replacements to ensure data is consistent
+    
+    ren_list <- grep("ren|rn|renewal|renw|Reenewal|Ren|Renewal|RENEWAL|RN|Reb", pol_txn)
+    pol_txn <- replace(pol_txn,ren_list,"REN")
+    
+    endo_list <- grep("endo|END|Endo|Endorsement|ENDORSE|MIDTERM|ENDP|end|endt", pol_txn)
+    pol_txn <- replace(pol_txn,endo_list,"ENDO")
+    
+    nb_list <- grep("nb|Business|BUSINESS|Biz|New|Na|new|bsuiness", pol_txn)
+    pol_txn <- replace(pol_txn,nb_list,"NB")
+    
+    issue_list <- grep("ISSUANCE|ISSUE|Issue|issue", pol_txn)
+    pol_txn <- replace(pol_txn,issue_list,"ISSUE")
+
+    rb_list <- grep("Revise|revise", pol_txn)
+    pol_txn <- replace(pol_txn,rb_list,"RB")
+
+    bind_list <- grep("BIND|Bind|Bound|bind", pol_txn)
+    pol_txn <- replace(pol_txn,bind_list,"BIND")
+
+    quote_list <- grep("quote|Quote|Finalize", pol_txn)
+    pol_txn <- replace(pol_txn,quote_list,"QUOTE")
+
+    pc_list <- grep("Correction|pc|corr|correction", pol_txn)
+    pol_txn <- replace(pol_txn,pc_list,"PC")
+
+    cbor_list <- grep("BOR|broker|CR", pol_txn)
+    pol_txn <- replace(pol_txn,cbor_list,"CBOR")
+
     #Add all he columns to the dataframe
     fl_incidents$fl_usr <- fl_usr
     fl_incidents$mf_id <- mf_id
