@@ -14,6 +14,10 @@
 
 processCASDefects <- function(x_file = character()) {
     
+	library(ggplot2)
+	library(reshape2)
+	library(scales)
+	
 	defects <- data.frame()
 	if(!file.exists(x_file)){
 		stop("invalid file")
@@ -30,7 +34,7 @@ processCASDefects <- function(x_file = character()) {
 	#defects$DateLevels <- cut(defects$StartDate, c(as.Date("12-09-2014","%d-%m-%Y"),as.Date("05-12-2014","%d-%m-%Y"),as.Date("01-03-2015","%d-%m-%Y"),as.Date("23-05-2015","%d-%m-%Y"),as.Date("03-07-2015","%d-%m-%Y")))
 	#defects$DateLabels <- cut(defects$StartDate, c(as.Date("12-09-2014","%d-%m-%Y"),as.Date("05-12-2014","%d-%m-%Y"),as.Date("01-03-2015","%d-%m-%Y"),as.Date("23-05-2015","%d-%m-%Y"),as.Date("03-07-2015","%d-%m-%Y")), labels=c("R5.0","R5.5","R6.0","R6.5"))
 	#defects <- subset(defects, DetectedEnv %in% c("QA","UAT","Model","Production"))
-	defects <- subset(defects, IssueType == "Bug")
+	#defects <- subset(defects, IssueType == "Bug")
 
 
 	## Get the defects counts by Severity and ones in Open Status
@@ -43,20 +47,67 @@ processCASDefects <- function(x_file = character()) {
 	severity <- levels(defects$Severity) 
 		
 	xtab_S_St <<- getXParamCrossTab(defects, status_codes, c("DefectStatus","Severity"), confidence=1.01, col_confidence=1.01)
+	df_S_St <<- melt(xtab_S_St)
+	colnames(df_S_St)[1] <- "DefectStatus"
+	colnames(df_S_St)[2] <- "Severity"
+	colnames(df_S_St)[3] <- "Defect_Count"
+	g <- ggplot(data=df_S_St, aes(x=DefectStatus, y=Defect_Count, fill=Severity)) + geom_bar(stat="identity", position="dodge")
+	g <- g + scale_fill_manual(values=c("Level 1 - Critical" = "red", "Level 2 - Urgent" = "yellow", "Level 3 - High" = "blue"))
+	g <- g + labs(x="Defect Status",y="Count of Defects", title="Casualty - Open Defects by Status")
+    g <- g + theme_bw() + theme(axis.text.x = element_text(size=8, angle=45), legend.text = element_text(size=7), legend.title=element_text(size=9))
+	g_CAS_OpenDefects <- g	
 	
 	xtab_S_St_res <<- getXParamCrossTab(defects, resolved_status_codes, c("DefectStatus","Severity"), confidence=1.01, col_confidence=1.01)
-
+	df_S_St_res <<- melt(xtab_S_St_res)
+	colnames(df_S_St_res)[1] <- "DefectStatus"
+	colnames(df_S_St_res)[2] <- "Severity"
+	colnames(df_S_St_res)[3] <- "Defect_Count"
+	g <- ggplot(data=df_S_St_res, aes(x=DefectStatus, y=Defect_Count, fill=Severity)) + geom_bar(stat="identity", position="dodge")
+	g <- g + scale_fill_manual(values=c("Level 1 - Critical" = "red", "Level 2 - Urgent" = "yellow", "Level 3 - High" = "blue"))
+	g <- g + labs(x="Defect Status",y="Count of Defects", title="Casualty - Resolved Defects by Status")
+    g <- g + theme_bw() + theme(axis.text.x = element_text(size=8, angle=45), legend.text = element_text(size=7), legend.title=element_text(size=9))
+	g_CAS_ResolvedDefects <- g	
+	
+	
 	xtab_FA_TA <<- getXParamCrossTab(defects, status_codes, c("FunctionalArea","TechnicalArea"), confidence=0.90, col_confidence=0.96)
-
+	df_FA_TA <<- melt(xtab_FA_TA)
+	colnames(df_FA_TA)[1] <- "FunctionalArea"
+	colnames(df_FA_TA)[2] <- "TechnicalArea"
+	colnames(df_FA_TA)[3] <- "Defect_Count"
+	g <- ggplot(data=df_FA_TA, aes(x=TechnicalArea, y=Defect_Count, fill=FunctionalArea)) + geom_bar(stat="identity", position="stack")
+	g <- g + labs(x="Technical Area",y="Count of Defects (Functional Area)", title="Casualty - Open Defects by Functional / Technical Area")
+    g <- g + theme_bw() + theme(axis.text.x = element_text(size=8, angle=45), legend.text = element_text(size=7), legend.title=element_text(size=9))
+	g_CAS_FA_TA_OpenDefects <- g	
+	
 	xtab_RCA_Env <<- getXParamCrossTab(defects, resolved_status_codes,c("RCACode","DetectedEnv"), confidence=1.01, col_confidence=1.01)
-
+	df_RCA_Env <<- melt(xtab_RCA_Env)
+	colnames(df_RCA_Env)[1] <- "RCACode"
+	colnames(df_RCA_Env)[2] <- "DetectedEnv"
+	colnames(df_RCA_Env)[3] <- "Defect_Count"
+	g <- ggplot(data=df_RCA_Env, aes(x=DetectedEnv, y=Defect_Count, fill=RCACode)) + geom_bar(stat="identity", position="stack")
+	g <- g + labs(x="Detected Environment",y="Count of Defects (RCA Code)", title="Casualty-Resolved Defects(RCA Code and Environment)")
+    g <- g + theme_bw() + theme(axis.text.x = element_text(size=8, angle=45), legend.text = element_text(size=7), legend.title=element_text(size=9))
+	g_CAS_RCA_Env_ResolvedDefects <- g	
+	
 	xtab_RCA_DS <<- getXParamCrossTab(defects, resolved_status_codes,c("DefectSource","RCACode"), confidence=1.01, col_confidence=1.01)
-
+	df_RCA_DS <<- melt(xtab_RCA_DS)
+	colnames(df_RCA_DS)[1] <- "DefectSource"
+	colnames(df_RCA_DS)[2] <- "RCACode"
+	colnames(df_RCA_DS)[3] <- "Defect_Count"
+	g <- ggplot(data=df_RCA_DS, aes(x=RCACode, y=Defect_Count, fill=DefectSource)) + geom_bar(stat="identity", position="stack")
+	g <- g + labs(x="RCA Code",y="Count of Defects (Defect Source)", title="Casualty - Resolved Defects by RCA Code and Defect Source")
+    g <- g + theme_bw() + theme(axis.text.x = element_text(size=8, angle=45), legend.text = element_text(size=7), legend.title=element_text(size=9))
+	g_CAS_RCA_DS_ResolvedDefects <- g	
+	
 	temp_defects <<- defects
 	
-	ls_cumDefects <- cumulativeDefects(defects)
-	defOpen <- ls_cumDefects[["cumOpen"]]
-	defClose <- ls_cumDefects[["cumClose"]]
+	#Plot the cumulative graphs for Defects open and close
+    g <- ggplot(data=defects, aes(x=as.Date(DetectedDate, "%m/%d/%Y"))) + stat_bin(aes(y=cumsum(..count..)), geom="line", binwidth=21,col="red") + stat_bin(aes(x=as.Date(ClosingDate,"%m/%d/%Y"), y=cumsum(..count..)), geom="line",binwidth=21, lty=2, col="blue") + scale_x_date(labels=date_format("%d-%b"), breaks=date_breaks("3 weeks")) + scale_y_continuous(limits=c(0,1.1*nrow(defects)))
+    g <- g + labs(x="Date", y="Cumulative Defects", title="CAS Defects - Open and Close Counts (Cumulative Basis)")
+	g <- g + geom_text(aes(x=as.Date(DetectedDate,"%m/%d/%Y"), y=cumsum(..count..),label=cumsum(..count..)),stat="bin", size=2)
+	g <- g + geom_text(aes(x=as.Date(ClosingDate,"%m/%d/%Y"), y=cumsum(..count..),label=cumsum(..count..)),stat="bin", size=2)
+    g <- g + theme_bw() + theme(axis.text.x = element_text(size=8, angle=45))
+    g_cum_defect_trend <- g
 
 	fileName <- paste("CCUW_CAS_Defects",strftime(Sys.time(),"%d%b%y-%H"),".pdf", sep="")
 	if(file.exists(fileName)){
@@ -66,103 +117,13 @@ processCASDefects <- function(x_file = character()) {
 	pdf(fileName)
 	par("cex"=0.8,"cex.axis"=0.8)
 	
-## Plot the first graph with Status and Severity
-	n_colors <- nrow(xtab_S_St)
-	n_columns <- ncol(xtab_S_St)
-	
-	cols <- c("yellow","red")
-	
-	barplot(t(xtab_S_St), ylim=c(0,1.2*max(xtab_S_St[,1])), main="Defect Status and Severity (Open)", xlab="Defect Status", ylab="Defect Count", axes=TRUE,cex.axis=par("cex"), cex.names=par("cex.axis"), beside=TRUE,col=cols,legend=TRUE)
-	
-	grid( round(max(xtab_S_St[,1])*1.1/20,0),lty=1,lwd=0.5)
+	print(g_CAS_OpenDefects)
+	print(g_CAS_ResolvedDefects)
+	print(g_CAS_FA_TA_OpenDefects)
+	print(g_CAS_RCA_Env_ResolvedDefects)
+	print(g_CAS_RCA_DS_ResolvedDefects)
+	print(g_cum_defect_trend)
 
-	barplot(t(xtab_S_St), ylim=c(0,1.2*max(xtab_S_St[,1])), main="Defect Status and Severity (Open)", xlab="Defect Status", ylab="Defect Count", axes=TRUE,cex.axis=par("cex"), cex.names=par("cex.axis"), beside=TRUE,col=cols,legend=TRUE,add=TRUE)
-
-	box()
-
-## Plot the first graph with Status and Severity
-	n_colors <- nrow(xtab_S_St_res)
-	n_columns <- ncol(xtab_S_St_res)
-	
-	cols <- c("yellow","red")
-	
-	barplot(t(xtab_S_St_res), ylim=c(0,1.2*max(xtab_S_St_res[,1])), main="Defect Status and Severity (Resolved)", xlab="Defect Status", ylab="Defect Count", axes=TRUE,cex.axis=par("cex"), cex.names=par("cex.axis"), beside=TRUE,col=cols,legend=TRUE)
-	
-	grid( round(max(xtab_S_St_res[,1])*1.1/20,0),lty=1,lwd=0.5)
-
-	barplot(t(xtab_S_St_res), ylim=c(0,1.2*max(xtab_S_St_res[,1])), main="Defect Status and Severity (Resolved)", xlab="Defect Status", ylab="Defect Count", axes=TRUE,cex.axis=par("cex"), cex.names=par("cex.axis"), beside=TRUE,col=cols,legend=TRUE,add=TRUE)
-
-	box()
-	
-	
-	
-
-## Plot the second graph with Functional Area and Technical Area
-
-	n_colors <- nrow(xtab_FA_TA)
-	n_columns <- ncol(xtab_FA_TA)
-	
-	#cols <- colors()[sample(450:550,n_colors)]
-	cols <- rainbow(n_colors)
-	
-	barplot(xtab_FA_TA, ylim=c(0,1.2*sum(xtab_FA_TA[,1])), main="Defects by Functionality and Technology", xlab="Technical Area", ylab="Defect Count", axes=TRUE,cex.axis=par("cex"), cex.names=par("cex.axis"), beside=FALSE,col=cols,legend=TRUE)
-	
-	grid( round(max(xtab_FA_TA[,1])/20,0),lty=1,lwd=0.5)
-
-	barplot(xtab_FA_TA, ylim=c(0,1.2*sum(xtab_FA_TA[,1])), main="Defects by Functionality and Technology", xlab="Technical Area", ylab="Defect Count", axes=TRUE,cex.axis=par("cex"), cex.names=par("cex.axis"), beside=FALSE,col=cols,legend=TRUE, add=TRUE)
-
-	box()
-
-## Plot the third graph with RCA Code and Environment Detected
-
-	n_colors <- nrow(xtab_RCA_Env)
-	n_columns <- ncol(xtab_RCA_Env)
-
-	cols <- heat.colors(n_colors)
-
-	barplot(xtab_RCA_Env, ylim=c(0,1.2*sum(xtab_RCA_Env[,1])), main="Defects by RCA Code and Environment detected", xlab="Environment Detected", ylab="Defect Count", axes=TRUE,cex.axis=par("cex"), cex.names=par("cex.axis"), beside=FALSE,col=cols,legend=TRUE)
-	
-	grid( round(max(xtab_RCA_Env[,1])/25,0),lty=1,lwd=0.5)
-
-		barplot(xtab_RCA_Env, ylim=c(0,1.2*sum(xtab_RCA_Env[,1])), main="Defects by RCA Code and Environment detected", xlab="Environment Detected", ylab="Defect Count", axes=TRUE,cex.axis=par("cex"), cex.names=par("cex.axis"), beside=FALSE,col=cols,legend=TRUE, add=TRUE)
-	
-	box()
-
-## Plot the fourth graph with RCA Code and Defect Source
-
-	n_colors <- nrow(xtab_RCA_DS)
-	n_columns <- ncol(xtab_RCA_DS)
-
-	cols <- cm.colors(n_colors)
-
-	barplot(xtab_RCA_DS, ylim=c(0,1.2*sum(xtab_RCA_DS[,1])), main="Defects by RCA Code and Defect Source", xlab="RCA Code", ylab="Defect Count", axes=TRUE,cex.axis=par("cex"), cex.names=par("cex.axis"), beside=FALSE,col=cols,legend=TRUE)
-	
-	grid( round(max(xtab_RCA_DS[,1])/25,0),lty=1,lwd=0.5)
-
-	barplot(xtab_RCA_DS, ylim=c(0,1.2*sum(xtab_RCA_DS[,1])), main="Defects by RCA Code and Defect Source", xlab="RCA Code",ylab="Defect Count", axes=TRUE,cex.axis=par("cex"), cex.names=par("cex.axis"), beside=FALSE,col=cols,legend=TRUE, add=TRUE)
-	
-	box()
-	
-
-## Plot the graph with cumulative defects
-
-	#par("labels"=FALSE)
-	plot(defOpen$startDate, defOpen$cumSum, ylim=c(0,max(defOpen$cumSum)),type="o", col="red", lty=1,lwd=2, main="Cumulative Defects - (May'15 to Aug'15)", xlab="Month", ylab="Defect Count",axes=FALSE)
-
-	text(defOpen$startDate, defOpen$cumSum, labels=defOpen$cumSum,pos=3, cex=0.6, col="black")	
-	
-	axis(side=1, at=defOpen$startDate, labels=format(defOpen$startDate,"%b-%y"))
-	axis(side=2, at=NULL, labels=TRUE, las=2, ylim=c(0,1.1*max(defOpen$cumSum)))
-	
-	lines(defClose$closeDate, defClose$cumSum, type="o", col="blue", lty=2,lwd=2, axes=FALSE)	
-
-	text(defClose$closeDate, defClose$cumSum, labels=defClose$cumSum,pos=3, cex=0.6, col="black")	
-
-		
-	grid(max(defOpen$cumSum)/100,lty=1,lwd=0.5)
-	box()	
-	legend("bottomright",c("Cumulative Defects Open", "Cumulative Defects Closed"), lty=c(1,2), col=c("red","blue"), text.col="black", cex=0.7)
-	
 	dev.off()
 
 }
@@ -228,7 +189,7 @@ defineColNames <- function(defects) {
 	return(defects)
 }
 
-## This function takes the defects dataframe and converst some of the key columns into factors
+## This function takes the defects data frame and converts some of the key columns into factors
 ## This function has to be called after the column names are modified appropriately - else it will not work
 convertToFactors <- function(defects){
 	
@@ -329,37 +290,20 @@ processXTab <- function(df_xtab, confidence=1.01, col_confidence=1.01){
 	
 	return(df_xtab)
 }
+## This function takes a) defects dataframe, b) Parameter for criteria c) List of values for parameter 
+## It then returns the subset of the dataframe based on the parameter and the values
+getSubset <- function(defects=data.frame(), parameter = character(), param_values=character()){
 
+	if(length(parameter)<1){
+		stop("Insufficient Parameters")
+	} 
+	
+	## Get the index corresponding to the parameters
+	c1 <- grep(parameter,names(defects))
 
-## This function takes the defects and returns the cumulative defects open and close numbers data
+	## Get subset of defects by the parameter and the param_values
+	sub_defects <- subset(defects, defects[,c1] %in% param_values)
+	sub_defects[,c1] <- as.factor(as.character(sub_defects[,c1]))
 
-cumulativeDefects <- function(defects){
-	# Order the defects by detected date (or detected date)
-	defects <- defects[order(defects[,"DetectedDate"],decreasing=FALSE),]
-
-	defects$startDate <- as.Date(defects$DetectedDate,"%m/%d/%Y")
-	defects$closeDate <- as.Date(defects$ClosingDate, "%m/%d/%Y")
-
-	temp <- tapply(defects$DefectID, cut(defects$startDate, "month"), length)
-	
-	openDefects <- data.frame(startDate=as.Date(names(temp),"%Y-%m-%d"),openCnt=as.numeric(temp))
-	openDefects <- openDefects[order(openDefects[,"startDate"],decreasing=FALSE),]
-	openDefects$cumSum <- cumsum(openDefects$openCnt)
-	
-	t_closeDefects <- data.frame(ID=defects$DefectID, closeDate=defects$closeDate)
-	t_closeDefects <- subset(t_closeDefects, !is.na(t_closeDefects$closeDate))
-	t_closeDefects <- subset(t_closeDefects, t_closeDefects$closeDate >= min(openDefects$startDate))
-	
-	
-	t_temp <- tapply(t_closeDefects$ID, cut(t_closeDefects$closeDate, "month"), length)
-	
-	closeDefects <- data.frame(closeDate=as.Date(names(t_temp),"%Y-%m-%d"), closeCnt=as.numeric(t_temp))
-	closeDefects <- closeDefects[order(closeDefects[,"closeDate"],decreasing=FALSE),]
-	closeDefects$cumSum <- cumsum(closeDefects$closeCnt)
-	
-	rm(temp)
-	rm(t_temp)
-		
-	ls_cumDefects <- list(cumOpen=openDefects, cumClose=closeDefects)
-	return(ls_cumDefects)
+    return(sub_defects)
 }
