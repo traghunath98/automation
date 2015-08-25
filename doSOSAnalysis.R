@@ -11,11 +11,14 @@
 
 doSOSAnalysis <- function(x_file = character()) {
     
+	library(ggplot2)
+	library(scales)
+	
 	scrum_db <- data.frame()
 	if(!file.exists(x_file)){
 		stop("invalid file")
 	}
-	scrum_db <- read.csv(x_file, stringsAsFactors=FALSE, na.strings=c("","N/A"))
+	scrum_db <- read.csv(x_file, stringsAsFactors=FALSE, na.strings=c("","N/A","TBD"))
 	
 	scrum_db <- updateColNames(scrum_db)
     scrum_db <- performComputations(scrum_db)
