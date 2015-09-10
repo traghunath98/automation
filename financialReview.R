@@ -62,8 +62,62 @@ financialReview <- function(x_file = character(), y_file = character()) {
 	g_staff_counts <- g
 
 	
+	fin_overview <- getUpdatedFinOverview(fin_overview, fin_data)
 	
-	##temp_fin_data <<- fin_data
+	# Plot the Per Capita Revenue and Cost by project and by month
+	g <- ggplot(data=fin_overview, aes(x=as.Date(Month)))
+	g <- g + geom_line(mapping=aes(y=PerCapita_Revenue), stat="identity", color="green")
+	g <- g + geom_line(mapping=aes(y=PerCapita_Cost), stat="identity", color="red")
+	g <- g + geom_text(aes(x=as.Date(Month), y=PerCapita_Revenue,label=round(PerCapita_Revenue),size=2))
+	g <- g + geom_text(aes(x=as.Date(Month), y=PerCapita_Cost,label=round(PerCapita_Cost),size=2))
+	g <- g + scale_y_continuous(labels= dollar)
+	g <- g + scale_x_date(labels=date_format("%b-%y"), breaks=date_breaks("month"))
+	g <- g + facet_grid(~Project)
+	g <- g + labs(x="Month",y="Per Capita Revenue / Cost", title="Per Capita Revenue / Cost By Project")
+    g <- g + theme_bw() + theme(axis.text.x = element_text(size=8, angle=45), legend.text = element_text(size=7), legend.title=element_text(size=9), legend.position="bottom")
+	g_pc_rev_cost <- g	
+	
+	# Plot the Cost overrun per project and by month
+	g <- ggplot(data=fin_overview, aes(x=as.Date(Month), y=Cost_Overrun, color=Project)) + geom_line()
+	g <- g + scale_y_continuous(labels= percent)
+	g <- g + scale_x_date(labels=date_format("%b-%y"), breaks=date_breaks("month"))
+	g <- g + geom_text(aes(x=as.Date(Month), y=Cost_Overrun,label=round(Cost_Overrun,2),size=2))
+	g <- g + labs(x="Month",y="Cost Overrun by Project", title="Cost Overrun by Project")
+    g <- g + theme_bw() + theme(axis.text.x = element_text(size=8, angle=45), legend.text = element_text(size=7), legend.title=element_text(size=9), legend.position="bottom")
+	g_cost_overrun <- g	
+	
+	# Plot the Gap Value as a % of revenue by project and by month
+	g <- ggplot(data=fin_overview, aes(x=as.Date(Month), y=gap_value/Revenue, color=Project)) + geom_line()
+	g <- g + scale_y_continuous(labels= percent)
+	g <- g + scale_x_date(labels=date_format("%b-%y"), breaks=date_breaks("month"))
+	g <- g + geom_text(aes(x=as.Date(Month), y=gap_value/Revenue,label=round(gap_value/Revenue,2),size=2))
+	g <- g + labs(x="Month",y="Gap Value by Project", title="Billing Gap by Project")
+    g <- g + theme_bw() + theme(axis.text.x = element_text(size=8, angle=45), legend.text = element_text(size=7), legend.title=element_text(size=9), legend.position="bottom")
+	g_billing_gap <- g
+    
+    
+    # Plot the Onsite head-count as a % of total head-count by project and by month
+    g <- ggplot(data=fin_overview, aes(x=as.Date(Month), y=((HC_ON_BILL+HC_ON_UNBILL)/(HC_OFF_BILL+HC_OFF_UNBILL + HC_ON_BILL + HC_ON_UNBILL)), color=Project)) + geom_line()
+    g <- g + scale_y_continuous(labels= percent)
+    g <- g + scale_x_date(labels=date_format("%b-%y"), breaks=date_breaks("month"))
+    g <- g + geom_text(aes(x=as.Date(Month), y=((HC_ON_BILL+HC_ON_UNBILL)/(HC_OFF_BILL+HC_OFF_UNBILL + HC_ON_BILL + HC_ON_UNBILL)),label=round(((HC_ON_BILL+HC_ON_UNBILL)/(HC_OFF_BILL+HC_OFF_UNBILL + HC_ON_BILL + HC_ON_UNBILL)),2),size=1))
+    g <- g + labs(x="Month",y="Onsite Ratio by Project", title="Onsite Ratio by Project")
+    g <- g + theme_bw() + theme(axis.text.x = element_text(size=8, angle=45), legend.text = element_text(size=7), legend.title=element_text(size=9), legend.position="bottom")
+    g_onsite_ratio <- g
+
+
+    # Plot the PerCapita Margin by project and by month
+    g <- ggplot(data=fin_overview, aes(x=as.Date(Month), y=((PerCapita_Revenue - PerCapita_Cost)/(PerCapita_Revenue)), color=Project)) + geom_line()
+    g <- g + scale_y_continuous(labels= percent)
+    g <- g + scale_x_date(labels=date_format("%b-%y"), breaks=date_breaks("month"))
+    g <- g + geom_text(aes(x=as.Date(Month), y=((PerCapita_Revenue - PerCapita_Cost)/(PerCapita_Revenue)),label=round(((PerCapita_Revenue - PerCapita_Cost)/(PerCapita_Revenue)),2),size=1))
+    g <- g + labs(x="Month",y="Per Capita Margin (%)", title="Per Capita Margin (%) by Project")
+    g <- g + theme_bw() + theme(axis.text.x = element_text(size=8, angle=45), legend.text = element_text(size=7), legend.title=element_text(size=9), legend.position="bottom")
+    g_PC_Margin <- g
+
+
+	temp_fin_data <<- fin_data
+	temp_fin_overview <<- fin_overview
 	
 	fileName <- paste("Financial_Review",strftime(Sys.time(),"%d%b%y-%H"),".pdf", sep="")
 	if(file.exists(fileName)){
@@ -75,11 +129,57 @@ financialReview <- function(x_file = character(), y_file = character()) {
 	
 	print(g_Revenue_Cost)
 	print(g_gross_margins)
+    print(g_PC_Margin)
 	print(g_staff_counts)
+	print(g_pc_rev_cost)
+	print(g_cost_overrun)
+	print(g_billing_gap)
+    print(g_onsite_ratio)
 	
 	dev.off()
 
 }
+
+## This function gets the billable - non-billable staff counts etc. 
+getUpdatedFinOverview <- function(fin_overview, fin_data){
+	
+	if(!(class(fin_overview)=="data.frame") | !(class(fin_data)=="data.frame")){
+		stop("Invalid input - this function expects defects as a dataframe")
+	}
+	fin_staff_counts <- aggregate(data=fin_data, MID ~ as.Date(Month) + Location + Project + Program + Billable, FUN=length)
+	names(fin_staff_counts)[1] <- "Month"
+	
+	sub_staff_cnt <- data.frame()
+		
+	fin_overview$HC_ON_BILL <- 0.0
+	fin_overview$HC_ON_UNBILL <- 0.0
+	fin_overview$HC_OFF_BILL <- 0.0
+	fin_overview$HC_OFF_UNBILL <- 0.0
+	
+	fin_overview$comp_ppl_cost <- 0.0
+	fin_overview$comp_revenue <- 0.0
+	fin_overview$gap_value <- 0.0
+	
+	for(i in 1:nrow(fin_overview)){
+		sub_staff_cnt <- subset(fin_staff_counts, (Month==as.Date(fin_overview[i,"Month"]) & Project==fin_overview[i,"Project"]))
+		temp_counts <- xtabs(data=sub_staff_cnt, MID ~ Location + Billable)
+		fin_overview$HC_ON_BILL[i] <- temp_counts["Onsite","YES"]
+		fin_overview$HC_ON_UNBILL[i] <- temp_counts["Onsite","NO"]
+		fin_overview$HC_OFF_BILL[i] <- temp_counts["Offshore","YES"]
+		fin_overview$HC_OFF_UNBILL[i] <- temp_counts["Offshore","NO"]
+		
+		fin_overview$comp_ppl_cost[i] <- sum(fin_data[fin_data$Month==fin_overview[i,"Month"] & fin_data$Project==fin_overview[i,"Project"],"Cost"])
+		fin_overview$comp_revenue[i] <- sum(fin_data[fin_data$Month==fin_overview[i,"Month"] & fin_data$Project==fin_overview[i,"Project"],"Revenue"])
+		fin_overview$gap_value[i] <- sum(fin_data[fin_data$Month==fin_overview[i,"Month"] & fin_data$Project==fin_overview[i,"Project"],"Gap_Value"])
+	}
+
+	fin_overview$Cost_Overrun <- (fin_overview$People_Cost - fin_overview$comp_ppl_cost) / fin_overview$comp_ppl_cost
+	fin_overview$PerCapita_Revenue <- fin_overview$Revenue /(fin_overview$HC_ON_BILL + fin_overview$HC_OFF_BILL + fin_overview$HC_ON_UNBILL + fin_overview$HC_OFF_UNBILL)
+	fin_overview$PerCapita_Cost <- fin_overview$People_Cost /(fin_overview$HC_ON_BILL + fin_overview$HC_OFF_BILL + fin_overview$HC_ON_UNBILL + fin_overview$HC_OFF_UNBILL)
+	
+	return(fin_overview)
+}
+
 
 ## This function takes the financial data frame and converts some of the key columns into factors
 convertToFactors_Overview <- function(fin_overview){
