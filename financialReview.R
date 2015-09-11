@@ -115,7 +115,8 @@ financialReview <- function(x_file = character(), y_file = character()) {
     g <- g + theme_bw() + theme(axis.text.x = element_text(size=8, angle=45), legend.text = element_text(size=7), legend.title=element_text(size=9), legend.position="bottom")
     g_PC_Margin <- g
 
-
+	temp_return <- portfolioLevelFinancials(fin_data, fin_overview)
+	
 	temp_fin_data <<- fin_data
 	temp_fin_overview <<- fin_overview
 	
@@ -174,8 +175,9 @@ getUpdatedFinOverview <- function(fin_overview, fin_data){
 	}
 
 	fin_overview$Cost_Overrun <- (fin_overview$People_Cost - fin_overview$comp_ppl_cost) / fin_overview$comp_ppl_cost
-	fin_overview$PerCapita_Revenue <- fin_overview$Revenue /(fin_overview$HC_ON_BILL + fin_overview$HC_OFF_BILL + fin_overview$HC_ON_UNBILL + fin_overview$HC_OFF_UNBILL)
-	fin_overview$PerCapita_Cost <- fin_overview$People_Cost /(fin_overview$HC_ON_BILL + fin_overview$HC_OFF_BILL + fin_overview$HC_ON_UNBILL + fin_overview$HC_OFF_UNBILL)
+	fin_overview$Total_HC <- (fin_overview$HC_ON_BILL + fin_overview$HC_OFF_BILL + fin_overview$HC_ON_UNBILL + fin_overview$HC_OFF_UNBILL)
+	fin_overview$PerCapita_Revenue <- fin_overview$Revenue / fin_overview$Total_HC
+	fin_overview$PerCapita_Cost <- fin_overview$People_Cost / fin_overview$Total_HC
 	
 	return(fin_overview)
 }
@@ -239,4 +241,124 @@ getSubset <- function(df_data=data.frame(), parameter = character(), param_value
 	sub_df_data[,c1] <- as.factor(as.character(sub_df_data[,c1]))
 
     return(sub_df_data)
+}
+
+portfolioLevelFinancials <- function(fin_data = data.frame(), fin_overview = data.frame()) {
+
+	# Get Portfolio Level Aggregate data for each month
+	ag_fin_overview <- aggregate(data=fin_overview, cbind(Revenue, People_Cost, Expenses, Total_Cost,comp_ppl_cost, comp_revenue, gap_value, HC_ON_BILL, HC_ON_UNBILL, HC_OFF_BILL, HC_OFF_UNBILL) ~ as.Date(Month), FUN=sum)
+	names(ag_fin_overview)[1] <- "Month"
+	
+	# Compute the derived columns at portfolio level
+	ag_fin_overview$PCT_GM1 <- (ag_fin_overview$Revenue - ag_fin_overview$People_Cost)/ag_fin_overview$Revenue
+	ag_fin_overview$PCT_GM2 <- (ag_fin_overview$Revenue - ag_fin_overview$Total_Cost)/ag_fin_overview$Revenue
+	ag_fin_overview$Total_HC <- ag_fin_overview$HC_ON_BILL + ag_fin_overview$HC_ON_UNBILL + ag_fin_overview$HC_OFF_BILL + ag_fin_overview$HC_OFF_UNBILL
+	ag_fin_overview$PerCapita_Revenue <- ag_fin_overview$Revenue / ag_fin_overview$Total_HC
+	ag_fin_overview$PerCapita_Cost <- ag_fin_overview$People_Cost/ag_fin_overview$Total_HC
+	ag_fin_overview$Cost_Overrun <- (ag_fin_overview$People_Cost - ag_fin_overview$comp_ppl_cost)/ag_fin_overview$comp_ppl_cost
+
+	## Plot the Financial Overview - Revenue, People Cost and Expenses by Project for all months.
+	g <- ggplot(data=ag_fin_overview, aes(x=as.Date(Month)))
+	g <- g + geom_bar(binwidth=30, mapping=aes(y=Revenue), stat="identity", fill="green")
+	g <- g + geom_bar(binwidth=30,mapping=aes(y=Total_Cost), stat="identity", fill="yellow")
+	g <- g + geom_bar(binwidth=30,mapping=aes(y=People_Cost), stat="identity", fill="red")
+	g <- g + scale_y_continuous(labels= dollar)
+	g <- g + scale_x_date(labels=date_format("%b-%y"), breaks=date_breaks("month"))
+	g <- g + labs(x="Month",y="Revenue / Cost (in USD)", title="Overall Portfolio level Revenue and Cost")
+    g <- g + theme_bw() + theme(axis.text.x = element_text(size=8, angle=45), legend.text = element_text(size=7), legend.title=element_text(size=9))
+	g_Revenue_Cost <- g	
+	
+	## Plot the Financial Overview - GM1 and GM2 Percentages.
+	g <- ggplot(data=ag_fin_overview, aes(x=as.Date(Month)))
+	g <- g + geom_line(mapping=aes(y=PCT_GM1), stat="identity", color="red")
+	g <- g + geom_line(mapping=aes(y=PCT_GM2), stat="identity", color="blue")
+	g <- g + scale_y_continuous(labels= percent)
+	g <- g + scale_x_date(labels=date_format("%b-%y"), breaks=date_breaks("month"))
+	g <- g + labs(x="Month",y="Gross Margin (Percentage)", title="Overall GM1 and GM2")
+    g <- g + theme_bw() + theme(axis.text.x = element_text(size=8, angle=45), legend.text = element_text(size=7), legend.title=element_text(size=9))
+	g_gross_margins <- g	
+	
+	## Plot the billable and non-billable staff counts
+	g <- ggplot(data=fin_data, aes(x=as.Date(Month), fill=Billable)) + geom_bar(binwidth=30,stat="bin", position="dodge")
+	g <- g + scale_fill_manual(values=c("YES" = "green", "NO" = "red"))
+	g <- g + scale_x_date(labels=date_format("%b-%y"), breaks=date_breaks("month"))
+	g <- g + facet_grid(~Location)
+	g <- g + labs(x="Month", y="No. of Staff", title="Billable and Unbillable staff - Overall Portfolio")
+	g <- g + theme_bw() + theme(axis.text.x = element_text(size=8, angle=45), legend.text = element_text(size=7), legend.title=element_text(size=9), legend.position="bottom")
+	g_staff_counts <- g
+
+	
+	fin_overview <- getUpdatedFinOverview(fin_overview, fin_data)
+	
+	# Plot the Per Capita Revenue and Cost by project and by month
+	g <- ggplot(data=ag_fin_overview, aes(x=as.Date(Month)))
+	g <- g + geom_line(mapping=aes(y=PerCapita_Revenue), stat="identity", color="green")
+	g <- g + geom_line(mapping=aes(y=PerCapita_Cost), stat="identity", color="red")
+	g <- g + geom_text(aes(x=as.Date(Month), y=PerCapita_Revenue,label=round(PerCapita_Revenue),size=2))
+	g <- g + geom_text(aes(x=as.Date(Month), y=PerCapita_Cost,label=round(PerCapita_Cost),size=2))
+	g <- g + scale_y_continuous(labels= dollar)
+	g <- g + scale_x_date(labels=date_format("%b-%y"), breaks=date_breaks("month"))
+	g <- g + labs(x="Month",y="Per Capita Revenue / Cost", title="Per Capita Revenue / Cost - Overall Portfolio")
+    g <- g + theme_bw() + theme(axis.text.x = element_text(size=8, angle=45), legend.text = element_text(size=7), legend.title=element_text(size=9), legend.position="bottom")
+	g_pc_rev_cost <- g	
+	
+	# Plot the Cost overrun per project and by month
+	g <- ggplot(data=ag_fin_overview, aes(x=as.Date(Month), y=Cost_Overrun)) + geom_line()
+	g <- g + scale_y_continuous(labels= percent)
+	g <- g + scale_x_date(labels=date_format("%b-%y"), breaks=date_breaks("month"))
+	g <- g + geom_text(aes(x=as.Date(Month), y=Cost_Overrun,label=round(Cost_Overrun,2),size=2))
+	g <- g + labs(x="Month",y="Cost Overrun", title="Overall Portfolio Cost Overrun")
+    g <- g + theme_bw() + theme(axis.text.x = element_text(size=8, angle=45), legend.text = element_text(size=7), legend.title=element_text(size=9), legend.position="bottom")
+	g_cost_overrun <- g	
+	
+	# Plot the Gap Value as a % of revenue by project and by month
+	g <- ggplot(data=ag_fin_overview, aes(x=as.Date(Month), y=gap_value/Revenue)) + geom_line()
+	g <- g + scale_y_continuous(labels= percent)
+	g <- g + scale_x_date(labels=date_format("%b-%y"), breaks=date_breaks("month"))
+	g <- g + geom_text(aes(x=as.Date(Month), y=gap_value/Revenue,label=round(gap_value/Revenue,2),size=2))
+	g <- g + labs(x="Month",y="Gap Value", title="Billing Gap (Overall Portfolio)")
+    g <- g + theme_bw() + theme(axis.text.x = element_text(size=8, angle=45), legend.text = element_text(size=7), legend.title=element_text(size=9), legend.position="bottom")
+	g_billing_gap <- g
+    
+    
+    # Plot the Onsite head-count as a % of total head-count by project and by month
+    g <- ggplot(data=ag_fin_overview, aes(x=as.Date(Month), y=((HC_ON_BILL+HC_ON_UNBILL)/(HC_OFF_BILL+HC_OFF_UNBILL + HC_ON_BILL + HC_ON_UNBILL)))) + geom_line()
+    g <- g + scale_y_continuous(labels= percent)
+    g <- g + scale_x_date(labels=date_format("%b-%y"), breaks=date_breaks("month"))
+    g <- g + geom_text(aes(x=as.Date(Month), y=((HC_ON_BILL+HC_ON_UNBILL)/(HC_OFF_BILL+HC_OFF_UNBILL + HC_ON_BILL + HC_ON_UNBILL)),label=round(((HC_ON_BILL+HC_ON_UNBILL)/(HC_OFF_BILL+HC_OFF_UNBILL + HC_ON_BILL + HC_ON_UNBILL)),2),size=1))
+    g <- g + labs(x="Month",y="Onsite Ratio by Project", title="Onsite Ratio (Overall Portfolio)")
+    g <- g + theme_bw() + theme(axis.text.x = element_text(size=8, angle=45), legend.text = element_text(size=7), legend.title=element_text(size=9), legend.position="bottom")
+    g_onsite_ratio <- g
+
+
+    # Plot the PerCapita Margin by project and by month
+    g <- ggplot(data=ag_fin_overview, aes(x=as.Date(Month), y=((PerCapita_Revenue - PerCapita_Cost)/(PerCapita_Revenue)))) + geom_line()
+    g <- g + scale_y_continuous(labels= percent)
+    g <- g + scale_x_date(labels=date_format("%b-%y"), breaks=date_breaks("month"))
+    g <- g + geom_text(aes(x=as.Date(Month), y=((PerCapita_Revenue - PerCapita_Cost)/(PerCapita_Revenue)),label=round(((PerCapita_Revenue - PerCapita_Cost)/(PerCapita_Revenue)),2),size=1))
+    g <- g + labs(x="Month",y="Per Capita Margin (%)", title="Per Capita Margin (%) by Project")
+    g <- g + theme_bw() + theme(axis.text.x = element_text(size=8, angle=45), legend.text = element_text(size=7), legend.title=element_text(size=9), legend.position="bottom")
+    g_PC_Margin <- g
+	
+	fileName <- paste("Financial_Review_Portfolio",strftime(Sys.time(),"%d%b%y-%H"),".pdf", sep="")
+	if(file.exists(fileName)){
+		file.remove(fileName)
+	}
+
+	pdf(file=fileName, paper="a4r")
+	par("cex"=0.8,"cex.axis"=0.8)
+	
+	print(g_Revenue_Cost)
+	print(g_gross_margins)
+    print(g_PC_Margin)
+	print(g_staff_counts)
+	print(g_pc_rev_cost)
+	print(g_cost_overrun)
+	print(g_billing_gap)
+    print(g_onsite_ratio)
+	
+	dev.off()
+	
+	return(1)	
+
 }
