@@ -2,7 +2,7 @@
 ## First we will read the financial data from a CSV file into a data frame. We will then transform the 
 ## the data frame to give us the necessary critical insights. 
 ## All graphs must be generated at the click of a button.
-##
+## Raghu - Feb 21 - Checking commit changes
 ##
 ## Each function is documented below in detail to highlight its specific responsibility.
 ## 
